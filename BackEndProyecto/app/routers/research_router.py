@@ -6,8 +6,8 @@ from typing import Dict
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from app.models.research_model import ResearchProject
-from app.services.pdf_service import generate_pdf
+from ..models.research_model import ResearchProject
+from ..services.pdf_service import generate_pdf
 
 
 router = APIRouter(prefix="/api/research", tags=["Research"])

@@ -2,8 +2,8 @@
 
 from fastapi import FastAPI
 
-from app.core.config import setup_cors
-from app.routers.research_router import router as research_router
+from .core.config import setup_cors
+from .routers.research_router import router as research_router
 
 
 app = FastAPI(title="Proyecto Investigacion API")
