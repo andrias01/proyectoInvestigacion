@@ -1,8 +1,22 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+import {
+  BookOpen,
+  Target,
+  Brain,
+  FlaskConical,
+  Database,
+  BarChart3,
+  FileText,
+  CheckCircle2,
+  BookMarked,
+  Lightbulb,
+  Sparkles,
+  Menu,
+  X,
+} from "lucide-react";
 import "./css/ResearchGuide.css";
 
-// Estado base (solo uno)
 const defaultState = {
   problema: "",
   objGeneral: "",
@@ -28,28 +42,50 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:8000"
 ).replace(/\/$/, "");
 
-const stepsIds = [
-  "paso1",
-  "paso2",
-  "paso3",
-  "paso4",
-  "paso5",
-  "paso6",
-  "paso7",
-  "paso8",
-  "paso9",
+const steps = [
+  { id: "paso1", title: "1. Problema", icon: BookOpen },
+  { id: "paso2", title: "2. Objetivos", icon: Target },
+  { id: "paso3", title: "3. Marco teórico", icon: Brain },
+  { id: "paso4", title: "4. Metodología", icon: FlaskConical },
+  { id: "paso5", title: "5. Recolección", icon: Database },
+  { id: "paso6", title: "6. Análisis", icon: BarChart3 },
+  { id: "paso7", title: "7. Resultados", icon: FileText },
+  { id: "paso8", title: "8. Conclusiones", icon: CheckCircle2 },
+  { id: "paso9", title: "9. Referencias", icon: BookMarked },
 ];
 
 const ResearchGuide = () => {
   const [form, setForm] = useState(defaultState);
   const [restored, setRestored] = useState(false);
   const [activeStep, setActiveStep] = useState("paso1");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState("pasos");
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
   const [apiMessage, setApiMessage] = useState("");
   const [apiError, setApiError] = useState("");
 
-  const sectionRefs = useRef({});
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setForm(parsed);
+        setPdfUrl("");
+        setApiMessage("");
+        setApiError("");
+        setRestored(true);
+        const timeout = setTimeout(() => setRestored(false), 3000);
+        return () => clearTimeout(timeout);
+      } catch (error) {
+        console.error("No se pudo restaurar el estado", error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+  }, [form]);
 
   const clearPdfFeedback = () => {
     setPdfUrl("");
@@ -57,27 +93,6 @@ const ResearchGuide = () => {
     setApiError("");
   };
 
-  // Cargar desde localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        setForm(JSON.parse(saved));
-        setPdfUrl("");
-        setApiMessage("");
-        setApiError("");
-        setRestored(true);
-        setTimeout(() => setRestored(false), 3000);
-      } catch {}
-    }
-  }, []);
-
-  // Guardar cambios
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-  }, [form]);
-
-  // Cambiar texto
   const handleChange = (field) => (e) => {
     const value = e.target.value;
     setForm((prev) => ({
@@ -87,7 +102,6 @@ const ResearchGuide = () => {
     clearPdfFeedback();
   };
 
-  // Cambiar checkboxes
   const handleChecklistChange = (key) => {
     setForm((prev) => ({
       ...prev,
@@ -99,16 +113,16 @@ const ResearchGuide = () => {
     clearPdfFeedback();
   };
 
-  // Scroll a sección
   const handleStepClick = (id) => {
+    setActivePanel("pasos");
     setActiveStep(id);
-    const el = sectionRefs.current[id];
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setSidebarOpen(false);
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
-  // Generar conclusión automática
   const generarConclusion = () => {
     const problema = form.problema.trim();
     const objG = form.objGeneral.trim();
@@ -154,10 +168,14 @@ const ResearchGuide = () => {
     }));
 
     clearPdfFeedback();
+    setActivePanel("pasos");
     setActiveStep("paso8");
+    const element = document.getElementById("paso8");
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
-  // Cargar datos de ejemplo
   const cargarEjemplo = () => {
     setForm({
       problema:
@@ -187,17 +205,17 @@ const ResearchGuide = () => {
 
     clearPdfFeedback();
     window.scrollTo({ top: 0, behavior: "smooth" });
+    setActivePanel("pasos");
+    setActiveStep("paso1");
   };
 
-  // Limpiar
   const limpiarTodo = () => {
     setForm(defaultState);
     clearPdfFeedback();
     window.scrollTo({ top: 0, behavior: "smooth" });
+    setActivePanel("pasos");
+    setActiveStep("paso1");
   };
-
-  // Imprimir
-  const handlePrint = () => window.print();
 
   const handleGeneratePdf = async () => {
     setLoadingPdf(true);
@@ -239,14 +257,7 @@ const ResearchGuide = () => {
       }
 
       setApiMessage(data?.message || "PDF generado exitosamente.");
-      setActiveStep("herramientas");
-      const herramientasSection = sectionRefs.current["herramientas"];
-      if (herramientasSection) {
-        herramientasSection.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }
+      setActivePanel("herramientas");
     } catch (error) {
       const message =
         error?.response?.data?.detail ||
@@ -254,12 +265,12 @@ const ResearchGuide = () => {
         error?.message ||
         "No fue posible generar el PDF.";
       setApiError(message);
+      setActivePanel("herramientas");
     } finally {
       setLoadingPdf(false);
     }
   };
 
-  // Progreso simple basado en 6 campos clave
   const completedChunks = [
     form.problema,
     form.objGeneral,
@@ -271,466 +282,513 @@ const ResearchGuide = () => {
 
   const progress = Math.round((completedChunks / 6) * 100);
 
+  const panelButtonClass = (panel) =>
+    `px-4 py-2 text-sm font-medium rounded-xl transition border border-white/10 ${
+      activePanel === panel
+        ? "bg-white/20 text-white"
+        : "bg-white/5 text-gray-300 hover:bg-white/10"
+    }`;
+
   return (
-    <div className="rg-body">
-      <header className="rg-header">
-        <div className="rg-wrap rg-top">
-          <div className="rg-brand">
-            <div className="rg-logo">
-              <svg width="22" height="22" viewBox="0 0 24 24">
-                <path d="M12 2l3.5 6.5L22 9l-5 4.9L18 21l-6-3.2L6 21l1-7.1L2 9l6.5-.5L12 2z" />
-              </svg>
-            </div>
-            <div>
-              <strong>Pasos de la Investigación</strong>
-              <br />
-              <span className="rg-muted">Guía interactiva y plantillas</span>
-            </div>
-          </div>
-          <nav className="rg-nav">
-            <a href="#acerca">Acerca</a>
-            <a href="#pasos">Pasos</a>
-            <a href="#herramientas">Herramientas</a>
-            <button className="rg-btn ghost" onClick={handlePrint}>
-              🖨 Imprimir
-            </button>
-          </nav>
-        </div>
-
-        <div className="rg-progress-bar">
-          <div className="rg-progress-track">
-            <div
-              className="rg-progress-fill"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-          <span className="rg-progress-label">
-            Progreso estimado: {progress}%
-          </span>
-        </div>
-
-        {restored && (
-          <div className="rg-toast">
-            Progreso restaurado automáticamente. 🎓
-          </div>
-        )}
-      </header>
-
-      <main className="rg-wrap rg-grid" id="pasos">
-        {/* Sidebar */}
-        <aside className="rg-toc">
-          <h3>Mapa del curso</h3>
-
-          {stepsIds.map((id, index) => (
-            <button
-              key={id}
-              className={
-                "rg-toc-link" + (activeStep === id ? " rg-toc-link--active" : "")
-              }
-              onClick={() => handleStepClick(id)}
-            >
-              {index + 1}.{" "}
-              {
-                {
-                  paso1: "Problema",
-                  paso2: "Objetivos",
-                  paso3: "Marco teórico",
-                  paso4: "Metodología",
-                  paso5: "Recolección",
-                  paso6: "Análisis",
-                  paso7: "Resultados",
-                  paso8: "Conclusiones",
-                  paso9: "Referencias",
-                }[id]
-              }
-            </button>
-          ))}
-
-          <button
-            className={
-              "rg-toc-link rg-toc-link--secondary" +
-              (activeStep === "herramientas" ? " rg-toc-link--active" : "")
-            }
-            onClick={() => handleStepClick("herramientas")}
-          >
-            Recursos
-          </button>
-        </aside>
-
-        {/* Contenido principal */}
-        <section className="rg-main">
-          {/* --- ACERCA --- */}
-          <article
-            id="acerca"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["acerca"] = el)}
-          >
-            <h2>
-              Plataforma Web Interactiva para la Enseñanza y Construcción de
-              Proyectos de Investigación {" "}
-              <span className="rg-badge">Proyecto académico</span>
-            </h2>
-            <p className="rg-description">
-              Esta plataforma nace para responder a las dificultades que
-              estudiantes y docentes encuentran al formular y estructurar un
-              proyecto de investigación. Reúne en un solo lugar recursos
-              pedagógicos, orientación práctica y herramientas digitales para
-              avanzar sin perder de vista la metodología.
-            </p>
-            <p className="rg-description">
-              Al combinar teoría y práctica, el usuario aprende cada etapa del
-              proceso mientras construye su propio documento final: identifica
-              el problema, define objetivos, documenta el marco teórico y
-              selecciona la metodología adecuada con apoyo constante.
-            </p>
-            <div className="rg-row">
-              <div>
-                <h3 className="rg-subtitle">Componentes clave</h3>
-                <ul className="rg-list">
-                  <li>
-                    Backend en Python que estructura los aportes y genera un
-                    PDF listo para revisión.
-                  </li>
-                  <li>
-                    API construida con FastAPI que enlaza la interfaz con el
-                    motor de generación de documentos.
-                  </li>
-                  <li>
-                    Frontend interactivo que guía con plantillas, ejemplos y
-                    recordatorios paso a paso.
-                  </li>
-                  <li>
-                    Despliegue en Render y Netlify para garantizar acceso
-                    confiable desde cualquier dispositivo.
-                  </li>
-                </ul>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-gray-900 text-gray-100">
+      <header className="sticky top-0 z-50 bg-slate-900/70 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-wrap items-center gap-4 justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center shadow-lg">
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="rg-subtitle">Equipo y contexto</h3>
-                <ul className="rg-team">
-                  <li>Andrés Vélez</li>
-                  <li>Felipe Solís</li>
-                  <li>Samuel Riaño</li>
-                </ul>
-                <p className="rg-description">
-                  Universidad Católica de Oriente · Facultad de Ingeniería · 4
-                  de septiembre de 2025
-                </p>
+                <h1 className="text-lg font-bold">Pasos de la Investigación</h1>
+                <p className="text-xs text-gray-400">Guía interactiva y plantillas</p>
               </div>
             </div>
-          </article>
-
-          {/* === PASO 1 === */}
-          <article
-            id="paso1"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["paso1"] = el)}
-          >
-            <h2>1) Planteamiento del problema</h2>
-            <p className="rg-description">
-              Describe con claridad qué situación genera la necesidad de tu
-              investigación, a quién afecta, en qué contexto ocurre y por qué es
-              relevante abordarla. Cuanto más preciso sea el planteamiento,
-              más fácil será definir objetivos y diseñar soluciones viables.
-            </p>
-            <label>Describe tu problema</label>
-            <textarea
-              value={form.problema}
-              onChange={handleChange("problema")}
-              placeholder="Describe qué ocurre, a quién afecta, dónde, cuándo y por qué es relevante..."
-            />
-          </article>
-
-          {/* === PASO 2 === */}
-          <article
-            id="paso2"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["paso2"] = el)}
-          >
-            <h2>2) Objetivos</h2>
-            <p className="rg-description">
-              Formula un objetivo general que capture la finalidad central del
-              estudio y especifica metas particulares que permitan alcanzarlo.
-              Procura que cada objetivo específico sea medible y alineado con
-              el problema planteado.
-            </p>
-            <label>Objetivo general</label>
-            <input
-              value={form.objGeneral}
-              onChange={handleChange("objGeneral")}
-            />
-
-            <label style={{ marginTop: 10 }}>Objetivos específicos</label>
-            <textarea
-              value={form.objEspecificos}
-              onChange={handleChange("objEspecificos")}
-              placeholder={"1) Identificar...\n2) Analizar...\n3) Evaluar..."}
-            />
-          </article>
-
-          {/* === PASO 3 === */}
-          <article
-            id="paso3"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["paso3"] = el)}
-          >
-            <h2>3) Marco teórico</h2>
-            <p className="rg-description">
-              Integra conceptos, teorías, antecedentes y referencias que
-              respalden tu estudio. Usa esta sección para construir la base
-              conceptual que orientará la interpretación de los datos.
-            </p>
-            <textarea
-              value={form.marco}
-              onChange={handleChange("marco")}
-              placeholder="Conceptos, teorías, autores, antecedentes..."
-            />
-          </article>
-
-          {/* === PASO 4 === */}
-          <article
-            id="paso4"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["paso4"] = el)}
-          >
-            <h2>4) Metodología</h2>
-            <p className="rg-description">
-              Define cómo abordarás la investigación: especifica el enfoque,
-              el diseño elegido, el tipo de muestra y los instrumentos que
-              utilizarás para recolectar información. La coherencia entre estas
-              decisiones garantizará que los resultados respondan a tus
-              objetivos.
-            </p>
-
-            <label>Enfoque</label>
-            <select
-              value={form.enfoque}
-              onChange={handleChange("enfoque")}
-            >
-              <option value="cuantitativo">Cuantitativo</option>
-              <option value="cualitativo">Cualitativo</option>
-              <option value="mixto">Mixto</option>
-            </select>
-
-            <label style={{ marginTop: 10 }}>Diseño</label>
-            <input
-              value={form.diseno}
-              onChange={handleChange("diseno")}
-            />
-
-            <label style={{ marginTop: 10 }}>Muestra</label>
-            <input
-              value={form.muestra}
-              onChange={handleChange("muestra")}
-            />
-
-            <label style={{ marginTop: 10 }}>Instrumentos</label>
-            <textarea
-              value={form.instrumentos}
-              onChange={handleChange("instrumentos")}
-            />
-          </article>
-
-          {/* === PASO 5 === */}
-          <article
-            id="paso5"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["paso5"] = el)}
-          >
-            <h2>5) Recolección de datos</h2>
-            <p className="rg-description">
-              Asegura las condiciones logísticas y éticas necesarias antes de
-              salir a campo. Utiliza la lista de verificación para confirmar que
-              cuentas con consentimiento informado, cronograma, protocolos de
-              calidad y mecanismos de resguardo de la información.
-            </p>
-
-            <ul className="rg-checklist">
-              <li>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={form.checklist.consentimiento}
-                    onChange={() => handleChecklistChange("consentimiento")}
-                  />
-                  Consentimiento informado listo
-                </label>
-              </li>
-
-              <li>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={form.checklist.cronograma}
-                    onChange={() => handleChecklistChange("cronograma")}
-                  />
-                  Cronograma definido
-                </label>
-              </li>
-
-              <li>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={form.checklist.protocolos}
-                    onChange={() => handleChecklistChange("protocolos")}
-                  />
-                  Protocolos de calidad (piloto)
-                </label>
-              </li>
-
-              <li>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={form.checklist.resguardo}
-                    onChange={() => handleChecklistChange("resguardo")}
-                  />
-                  Resguardo/anónimo OK
-                </label>
-              </li>
-            </ul>
-          </article>
-
-          {/* === PASO 6 === */}
-          <article
-            id="paso6"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["paso6"] = el)}
-          >
-            <h2>6) Análisis de datos</h2>
-            <p className="rg-description">
-              Define los procedimientos analíticos que utilizarás para dar
-              respuesta a cada objetivo. Selecciona técnicas acordes al enfoque
-              (cuantitativo, cualitativo o mixto) y deja explícito cómo
-              interpretarás los hallazgos.
-            </p>
-            <details>
-              <summary>Ejemplos</summary>
-              <ul>
-                <li><b>Cuantitativo:</b> ANOVA, t-Student, regresión</li>
-                <li><b>Cualitativo:</b> codificación abierta, análisis temático</li>
-              </ul>
-            </details>
-          </article>
-
-          {/* === PASO 7 === */}
-          <article
-            id="paso7"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["paso7"] = el)}
-          >
-            <h2>7) Resultados</h2>
-            <p className="rg-description">
-              Resume los hallazgos más relevantes y explica cómo se relacionan
-              con las preguntas y objetivos. Puedes apoyarte en tablas, figuras
-              o descripciones narrativas según el tipo de estudio.
-            </p>
-            <textarea
-              value={form.resultados}
-              onChange={handleChange("resultados")}
-              placeholder="Describe tus hallazgos..."
-            />
-          </article>
-
-          {/* === PASO 8 === */}
-          <article
-            id="paso8"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["paso8"] = el)}
-          >
-            <h2>8) Conclusiones</h2>
-            <p className="rg-description">
-              Integra lo aprendido durante el proceso, responde a la pregunta
-              de investigación y plantea recomendaciones o líneas futuras. Usa
-              el generador automático como base y ajusta la redacción final.
-            </p>
-            <button className="rg-btn primary" onClick={generarConclusion}>
-              ⚡ Generar conclusión
-            </button>
-
-            <textarea
-              value={form.conclusion}
-              onChange={handleChange("conclusion")}
-              placeholder="Aquí aparecerá tu conclusión generada."
-            />
-          </article>
-
-          {/* === PASO 9 === */}
-          <article
-            id="paso9"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["paso9"] = el)}
-          >
-            <h2>9) Referencias</h2>
-            <p className="rg-description">
-              Registra todas las fuentes consultadas siguiendo una norma
-              reconocida (APA, IEEE, Vancouver, entre otras). Mantener la
-              bibliografía actualizada evita el plagio y facilita futuras
-              revisiones.
-            </p>
-
-            <textarea
-              value={form.refs}
-              onChange={handleChange("refs")}
-              placeholder="Norma APA, IEEE o Vancouver..."
-            />
-          </article>
-
-          {/* === HERRAMIENTAS === */}
-          <article
-            id="herramientas"
-            className="rg-card"
-            ref={(el) => (sectionRefs.current["herramientas"] = el)}
-          >
-            <h2>Herramientas y recursos de apoyo</h2>
-            <p className="rg-description">
-              Siguiendo el proceso de investigación descrito por QuestionPro,
-              priorizamos recursos que fortalecen cada fase: planificación,
-              recolección, análisis y difusión de resultados.
-            </p>
-            <ul className="rg-tools">
-              <li>
-                <strong>Planeación:</strong> tableros de proyecto y mapas de
-                ruta para organizar etapas, entregables y responsables.
-              </li>
-              <li>
-                <strong>Recolección de datos:</strong> formularios digitales,
-                encuestas en QuestionPro o Google Forms y guías para entrevistas
-                semiestructuradas.
-              </li>
-              <li>
-                <strong>Análisis:</strong> hojas de cálculo colaborativas,
-                software estadístico y herramientas de codificación cualitativa
-                para transformar la información en hallazgos.
-              </li>
-              <li>
-                <strong>Comunicación:</strong> plantillas de informes y
-                presentaciones que facilitan compartir conclusiones con la
-                comunidad académica.
-              </li>
-            </ul>
-            <p className="rg-description">
-              Utiliza las siguientes acciones rápidas para trabajar con tu
-              proyecto y generar el documento final desde el backend.
-            </p>
-            <div className="rg-actions">
-              <button className="rg-btn" onClick={cargarEjemplo}>
-                💡 Cargar ejemplo
-              </button>
-              <button className="rg-btn" onClick={limpiarTodo}>
-                🧹 Limpiar
-              </button>
+            <div className="flex flex-1 sm:flex-none items-center justify-end gap-3">
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-1 py-1">
+                <button
+                  className={panelButtonClass("acerca")}
+                  onClick={() => {
+                    setActivePanel("acerca");
+                    setSidebarOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  Acerca
+                </button>
+                <button
+                  className={panelButtonClass("pasos")}
+                  onClick={() => {
+                    setActivePanel("pasos");
+                    setSidebarOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  Pasos
+                </button>
+                <button
+                  className={panelButtonClass("herramientas")}
+                  onClick={() => {
+                    setActivePanel("herramientas");
+                    setSidebarOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  Herramientas
+                </button>
+              </div>
               <button
-                className="rg-btn primary"
                 onClick={handleGeneratePdf}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold rounded-xl shadow-lg transition disabled:opacity-60"
                 disabled={loadingPdf}
               >
                 {loadingPdf ? "Generando PDF..." : "Generar PDF"}
               </button>
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition"
+                aria-label="Abrir menú"
+              >
+                {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3 text-xs text-gray-400">
+            <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+            <span className="font-medium">Progreso: {progress}%</span>
+            {restored && (
+              <span className="px-3 py-1 bg-white/10 border border-white/20 rounded-full text-[11px] text-white">
+                Progreso restaurado automáticamente 🎓
+              </span>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {activePanel === "acerca" && (
+          <div className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+            <h2 className="text-2xl font-bold">
+              Plataforma Web Interactiva para la Enseñanza y Construcción de Proyectos de Investigación
+              <span className="ml-2 px-3 py-1 text-xs font-semibold rounded-full bg-white/10 text-cyan-300">Proyecto académico</span>
+            </h2>
+            <p className="text-sm text-gray-400">
+              Esta plataforma nace para responder a las dificultades que estudiantes y docentes encuentran al formular y estructurar un proyecto de investigación. Reúne en un solo lugar recursos pedagógicos, orientación práctica y herramientas digitales para avanzar sin perder de vista la metodología.
+            </p>
+            <p className="text-sm text-gray-400">
+              Al combinar teoría y práctica, el usuario aprende cada etapa del proceso mientras construye su propio documento final: identifica el problema, define objetivos, documenta el marco teórico y selecciona la metodología adecuada con apoyo constante.
+            </p>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">Componentes clave</h3>
+                <ul className="text-sm text-gray-400 space-y-2 list-disc list-inside">
+                  <li>Backend en Python que estructura los aportes y genera un PDF listo para revisión.</li>
+                  <li>API construida con FastAPI que enlaza la interfaz con el motor de generación de documentos.</li>
+                  <li>Frontend interactivo que guía con plantillas, ejemplos y recordatorios paso a paso.</li>
+                  <li>Despliegue en Render y Netlify para garantizar acceso confiable desde cualquier dispositivo.</li>
+                </ul>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-200 uppercase tracking-wider">Equipo y contexto</h3>
+                <ul className="text-sm text-gray-400 space-y-1">
+                  <li>Andrés Vélez</li>
+                  <li>Felipe Solís</li>
+                  <li>Samuel Riaño</li>
+                </ul>
+                <p className="text-sm text-gray-400">
+                  Universidad Católica de Oriente · Facultad de Ingeniería · 4 de septiembre de 2025
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activePanel === "pasos" && (
+          <div className="flex gap-6">
+            <aside
+              className={`${
+                sidebarOpen
+                  ? "fixed inset-0 z-40 bg-slate-900/95 backdrop-blur-xl p-6"
+                  : "hidden"
+              } lg:block lg:sticky lg:top-32 lg:w-64 lg:self-start lg:bg-gray-900/60 lg:backdrop-blur-sm lg:border lg:border-white/10 lg:rounded-2xl lg:p-5 lg:shadow-2xl`}
+            >
+              <div className="lg:hidden flex justify-between items-center mb-6">
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Mapa del curso</h3>
+                <button onClick={() => setSidebarOpen(false)} aria-label="Cerrar menú">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <h3 className="hidden lg:block text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">
+                Mapa del curso
+              </h3>
+              <nav className="space-y-1">
+                {steps.map(({ id, title, icon: Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => handleStepClick(id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition group ${
+                      activeStep === id ? "bg-cyan-400/10 border border-cyan-400/40" : "hover:bg-cyan-400/10"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition" />
+                    <span className="text-sm">{title}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    setActivePanel("herramientas");
+                    setSidebarOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-cyan-400/10 text-left transition group"
+                >
+                  <Lightbulb className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition" />
+                  <span className="text-sm">Recursos</span>
+                </button>
+              </nav>
+            </aside>
+
+            <main className="flex-1 space-y-6">
+              <div className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl">
+                <div className="flex flex-wrap items-start gap-3 mb-4">
+                  <h2 className="text-2xl font-bold flex-1">Aprende el proceso de investigación</h2>
+                  <span className="px-3 py-1 bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 text-xs font-bold rounded-full">
+                    Modo guía
+                  </span>
+                </div>
+                <p className="text-gray-400 text-sm mb-4">
+                  Esta página te conduce paso a paso desde el planteamiento del problema hasta las conclusiones. En cada paso encontrarás tips, ejemplos y pequeños formularios para practicar.
+                </p>
+                <div className="flex flex-wrap gap-2 text-xs text-gray-400">
+                  <span className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">Tiempo: 6-10h</span>
+                  <span className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">Método: iterativo</span>
+                  <span className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">Nivel: principiante</span>
+                </div>
+              </div>
+
+              <section id="paso1" className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <BookOpen className="w-6 h-6 text-cyan-400" />
+                  1) Planteamiento del problema
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Describe con claridad qué situación genera la necesidad de tu investigación, a quién afecta, en qué contexto ocurre y por qué es relevante abordarla.
+                </p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Escribe tu problemática</label>
+                    <textarea
+                      value={form.problema}
+                      onChange={handleChange("problema")}
+                      placeholder="Ej.: En el conjunto residencial X se presentan bajas tasas de uso del gimnasio..."
+                      className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 min-h-32 resize-y"
+                    />
+                  </div>
+                  <details className="border border-dashed border-white/20 rounded-xl p-4">
+                    <summary className="cursor-pointer text-cyan-400 font-semibold text-sm mb-2">Plantilla rápida</summary>
+                    <div className="text-sm text-gray-400 space-y-2">
+                      <p>
+                        <strong className="text-gray-300">Formato:</strong> En [contexto] se observa [situación] que afecta a [población].
+                      </p>
+                      <p>
+                        <strong className="text-gray-300">Ejemplo:</strong> En colegios urbanos se observa un descenso en la lectura recreativa.
+                      </p>
+                    </div>
+                  </details>
+                </div>
+              </section>
+
+              <section id="paso2" className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Target className="w-6 h-6 text-cyan-400" />
+                  2) Objetivos
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Formula un objetivo general y varios objetivos específicos alineados con el problema planteado.
+                </p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Objetivo general</label>
+                      <input
+                        value={form.objGeneral}
+                        onChange={handleChange("objGeneral")}
+                        placeholder="Ej.: Analizar los factores que..."
+                        className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Objetivos específicos</label>
+                      <textarea
+                        value={form.objEspecificos}
+                        onChange={handleChange("objEspecificos")}
+                        placeholder={"1) Identificar...\n2) Comparar..."}
+                        className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 min-h-32 resize-y"
+                      />
+                    </div>
+                  </div>
+                  <details className="border border-dashed border-white/20 rounded-xl p-4">
+                    <summary className="cursor-pointer text-cyan-400 font-semibold text-sm mb-2">Consejos</summary>
+                    <ul className="text-sm text-gray-400 space-y-2">
+                      <li>
+                        <strong>Cuantitativo:</strong> Medir, comparar, estimar
+                      </li>
+                      <li>
+                        <strong>Cualitativo:</strong> Comprender, describir, explorar
+                      </li>
+                    </ul>
+                  </details>
+                </div>
+              </section>
+
+              <section id="paso3" className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Brain className="w-6 h-6 text-cyan-400" />
+                  3) Marco teórico
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Integra conceptos, teorías y antecedentes que respalden tu estudio. Usa esta sección para construir la base conceptual que orientará la interpretación de los datos.
+                </p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Notas del marco teórico</label>
+                    <textarea
+                      value={form.marco}
+                      onChange={handleChange("marco")}
+                      placeholder="Conceptos, teorías, autores..."
+                      className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 min-h-32 resize-y"
+                    />
+                  </div>
+                  <details className="border border-dashed border-white/20 rounded-xl p-4">
+                    <summary className="cursor-pointer text-cyan-400 font-semibold text-sm mb-2">Tips</summary>
+                    <ul className="text-sm text-gray-400 space-y-2">
+                      <li>Define conceptos con citas clave.</li>
+                      <li>Conecta los referentes con tus objetivos.</li>
+                    </ul>
+                  </details>
+                </div>
+              </section>
+
+              <section id="paso4" className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <FlaskConical className="w-6 h-6 text-cyan-400" />
+                  4) Metodología
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Define el enfoque, el diseño, la muestra y los instrumentos que utilizarás para recolectar información.
+                </p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Enfoque</label>
+                      <select
+                        value={form.enfoque}
+                        onChange={handleChange("enfoque")}
+                        className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                      >
+                        <option value="cuantitativo">Cuantitativo</option>
+                        <option value="cualitativo">Cualitativo</option>
+                        <option value="mixto">Mixto</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Diseño</label>
+                      <input
+                        value={form.diseno}
+                        onChange={handleChange("diseno")}
+                        placeholder="Descriptivo, correlacional..."
+                        className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Población / Muestra</label>
+                      <input
+                        value={form.muestra}
+                        onChange={handleChange("muestra")}
+                        placeholder="120 residentes..."
+                        className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Instrumentos</label>
+                    <textarea
+                      value={form.instrumentos}
+                      onChange={handleChange("instrumentos")}
+                      placeholder="Encuesta Likert, entrevista..."
+                      className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 min-h-44 resize-y"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section id="paso5" className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Database className="w-6 h-6 text-cyan-400" />
+                  5) Recolección de datos
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Planifica cómo obtendrás los datos necesarios para tu investigación.
+                </p>
+                <div className="space-y-2">
+                  {[
+                    { key: "consentimiento", label: "Consentimiento informado" },
+                    { key: "cronograma", label: "Cronograma y responsables" },
+                    { key: "protocolos", label: "Protocolos de calidad" },
+                    { key: "resguardo", label: "Resguardo de datos" },
+                  ].map(({ key, label }) => (
+                    <label
+                      key={key}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.checklist[key]}
+                        onChange={() => handleChecklistChange(key)}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+
+              <section id="paso6" className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <BarChart3 className="w-6 h-6 text-cyan-400" />
+                  6) Análisis de datos
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Selecciona técnicas de análisis acordes al enfoque y al tipo de datos recopilados.
+                </p>
+                <details className="border border-dashed border-white/20 rounded-xl p-4">
+                  <summary className="cursor-pointer text-cyan-400 font-semibold text-sm mb-2">Técnicas sugeridas</summary>
+                  <ul className="text-sm text-gray-400 space-y-2">
+                    <li>
+                      <strong>Cuantitativo:</strong> estadística descriptiva, ANOVA, regresión
+                    </li>
+                    <li>
+                      <strong>Cualitativo:</strong> codificación temática, triangulación, análisis narrativo
+                    </li>
+                  </ul>
+                </details>
+              </section>
+
+              <section id="paso7" className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <FileText className="w-6 h-6 text-cyan-400" />
+                  7) Resultados
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Resume los hallazgos más importantes obtenidos tras aplicar tus instrumentos.
+                </p>
+                <textarea
+                  value={form.resultados}
+                  onChange={handleChange("resultados")}
+                  placeholder="Describe los resultados principales..."
+                  className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 min-h-32 resize-y"
+                />
+              </section>
+
+              <section id="paso8" className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-6 h-6 text-cyan-400" />
+                  8) Conclusiones
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Integra lo aprendido durante el proceso, responde a la pregunta de investigación y plantea recomendaciones o líneas futuras.
+                </p>
+                <button
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold rounded-xl shadow-lg transition hover:shadow-cyan-500/20"
+                  onClick={generarConclusion}
+                >
+                  ⚡ Generar conclusión
+                </button>
+                <textarea
+                  value={form.conclusion}
+                  onChange={handleChange("conclusion")}
+                  placeholder="Aquí aparecerá tu conclusión generada."
+                  className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 min-h-32 resize-y"
+                />
+              </section>
+
+              <section id="paso9" className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <BookMarked className="w-6 h-6 text-cyan-400" />
+                  9) Referencias
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Registra todas las fuentes consultadas siguiendo una norma reconocida (APA, IEEE, Vancouver, entre otras).
+                </p>
+                <textarea
+                  value={form.refs}
+                  onChange={handleChange("refs")}
+                  placeholder="Norma APA, IEEE o Vancouver..."
+                  className="w-full px-4 py-3 bg-slate-950 border border-white/20 rounded-xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 min-h-32 resize-y"
+                />
+              </section>
+
+              <p className="text-center text-xs text-gray-500 py-6">
+                Hecho con ❤️ para estudiantes e investigadores.
+              </p>
+            </main>
+          </div>
+        )}
+
+        {activePanel === "herramientas" && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-br from-gray-900/90 to-gray-900/70 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Lightbulb className="w-6 h-6 text-cyan-400" /> Herramientas y recursos de apoyo
+              </h2>
+              <p className="text-sm text-gray-400">
+                Siguiendo el proceso de investigación descrito por QuestionPro, priorizamos recursos que fortalecen cada fase: planificación, recolección, análisis y difusión de resultados.
+              </p>
+              <ul className="text-sm text-gray-400 space-y-2 list-disc list-inside">
+                <li>
+                  <strong className="text-gray-200">Planeación:</strong> tableros de proyecto y mapas de ruta para organizar etapas, entregables y responsables.
+                </li>
+                <li>
+                  <strong className="text-gray-200">Recolección de datos:</strong> formularios digitales, encuestas en QuestionPro o Google Forms y guías para entrevistas semiestructuradas.
+                </li>
+                <li>
+                  <strong className="text-gray-200">Análisis:</strong> hojas de cálculo colaborativas, software estadístico y herramientas de codificación cualitativa.
+                </li>
+                <li>
+                  <strong className="text-gray-200">Comunicación:</strong> plantillas de informes y presentaciones que facilitan compartir conclusiones con la comunidad académica.
+                </li>
+              </ul>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button
+                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm hover:bg-white/10 transition"
+                  onClick={cargarEjemplo}
+                >
+                  💡 Cargar ejemplo
+                </button>
+                <button
+                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm hover:bg-white/10 transition"
+                  onClick={limpiarTodo}
+                >
+                  🧹 Limpiar
+                </button>
+              </div>
+              {apiMessage && (
+                <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2">
+                  {apiMessage}
+                </p>
+              )}
+              {apiError && (
+                <p className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-2">
+                  {apiError}
+                </p>
+              )}
               {pdfUrl && (
                 <a
-                  className="rg-btn"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-900 font-semibold rounded-xl shadow-lg transition"
                   href={pdfUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -739,19 +797,9 @@ const ResearchGuide = () => {
                 </a>
               )}
             </div>
-            {apiMessage && (
-              <p className="rg-status rg-status--ok">{apiMessage}</p>
-            )}
-            {apiError && (
-              <p className="rg-status rg-status--error">{apiError}</p>
-            )}
-          </article>
-
-          <p className="rg-footer">
-            Hecho con ❤️ para estudiantes e investigadores.
-          </p>
-        </section>
-      </main>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
