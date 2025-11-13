@@ -1,6 +1,7 @@
 """Service for generating research project PDFs."""
 from datetime import datetime
 from pathlib import Path
+from tempfile import gettempdir
 
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -10,7 +11,7 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from app.models.research_model import ResearchProject
 
 
-TMP_DIR = Path("/tmp")
+TMP_DIR = Path(gettempdir())
 
 
 def _build_document_elements(project: ResearchProject) -> list:
@@ -66,6 +67,7 @@ def generate_pdf(project: ResearchProject) -> str:
     file_name = f"proyecto_investigacion_{timestamp}.pdf"
     file_path = TMP_DIR / file_name
 
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
     document = SimpleDocTemplate(str(file_path), pagesize=LETTER, leftMargin=inch, rightMargin=inch)
     elements = _build_document_elements(project)
     document.build(elements)
