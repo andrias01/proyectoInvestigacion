@@ -230,6 +230,23 @@
   color: var(--muted);
 }
 
+.rg-description {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 8px 0 14px;
+}
+
+.rg-description strong {
+  color: var(--ink);
+}
+
+.rg-subtitle {
+  font-size: 16px;
+  margin: 6px 0 8px;
+  color: var(--ink);
+}
+
 .rg-kpi {
   display: flex;
   flex-wrap: wrap;
@@ -243,6 +260,27 @@
   border: 1px solid rgba(148, 163, 184, 0.22);
   font-size: 12px;
   color: var(--muted);
+}
+
+.rg-list {
+  margin: 0 0 0 18px;
+  padding: 0;
+  color: var(--ink);
+}
+
+.rg-list li {
+  margin-bottom: 6px;
+}
+
+.rg-team {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+}
+
+.rg-team li {
+  margin-bottom: 4px;
+  font-weight: 600;
 }
 
 /* Layout rows */
@@ -299,6 +337,12 @@ select:focus {
   font-size: 14px;
 }
 
+.rg-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .rg-btn.primary {
   background: linear-gradient(135deg, var(--brand), var(--accent));
   color: #06111a;
@@ -329,6 +373,47 @@ select:focus {
 .rg-checklist input {
   transform: translateY(2px);
   margin-right: 6px;
+}
+
+.rg-tools {
+  margin: 0 0 12px 18px;
+  padding: 0;
+  list-style: disc;
+}
+
+.rg-tools li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.rg-tools strong {
+  color: var(--brand);
+}
+
+.rg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.rg-status {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.rg-status--ok {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  color: #bbf7d0;
+}
+
+.rg-status--error {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  color: #fecaca;
 }
 
 /* Details */

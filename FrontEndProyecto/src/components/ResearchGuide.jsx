@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
 import "./css/ResearchGuide.css";
 
 // Estado base (solo uno)
@@ -23,6 +24,9 @@ const defaultState = {
 };
 
 const STORAGE_KEY = "research-guide-v1";
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:8000"
+).replace(/\/$/, "");
 
 const stepsIds = [
   "paso1",
@@ -40,8 +44,18 @@ const ResearchGuide = () => {
   const [form, setForm] = useState(defaultState);
   const [restored, setRestored] = useState(false);
   const [activeStep, setActiveStep] = useState("paso1");
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [apiMessage, setApiMessage] = useState("");
+  const [apiError, setApiError] = useState("");
 
   const sectionRefs = useRef({});
+
+  const clearPdfFeedback = () => {
+    setPdfUrl("");
+    setApiMessage("");
+    setApiError("");
+  };
 
   // Cargar desde localStorage
   useEffect(() => {
@@ -49,6 +63,9 @@ const ResearchGuide = () => {
     if (saved) {
       try {
         setForm(JSON.parse(saved));
+        setPdfUrl("");
+        setApiMessage("");
+        setApiError("");
         setRestored(true);
         setTimeout(() => setRestored(false), 3000);
       } catch {}
@@ -62,10 +79,12 @@ const ResearchGuide = () => {
 
   // Cambiar texto
   const handleChange = (field) => (e) => {
+    const value = e.target.value;
     setForm((prev) => ({
       ...prev,
-      [field]: e.target.value,
+      [field]: value,
     }));
+    clearPdfFeedback();
   };
 
   // Cambiar checkboxes
@@ -77,6 +96,7 @@ const ResearchGuide = () => {
         [key]: !prev.checklist[key],
       },
     }));
+    clearPdfFeedback();
   };
 
   // Scroll a sección
@@ -133,6 +153,7 @@ const ResearchGuide = () => {
       conclusion: partes.join(" "),
     }));
 
+    clearPdfFeedback();
     setActiveStep("paso8");
   };
 
@@ -164,17 +185,79 @@ const ResearchGuide = () => {
       },
     });
 
+    clearPdfFeedback();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Limpiar
   const limpiarTodo = () => {
     setForm(defaultState);
+    clearPdfFeedback();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Imprimir
   const handlePrint = () => window.print();
+
+  const handleGeneratePdf = async () => {
+    setLoadingPdf(true);
+    setApiError("");
+    setApiMessage("");
+
+    const metodologiaPartes = [
+      `Enfoque: ${form.enfoque || "Pendiente por definir"}`,
+      form.diseno && `Diseño: ${form.diseno}`,
+      form.muestra && `Muestra: ${form.muestra}`,
+      form.instrumentos && `Instrumentos: ${form.instrumentos}`,
+    ].filter(Boolean);
+
+    const payload = {
+      problema: form.problema.trim() || "Pendiente por definir.",
+      obj_general: form.objGeneral.trim() || "Pendiente por definir.",
+      obj_especificos:
+        form.objEspecificos.trim() || "Pendiente por definir.",
+      marco: form.marco.trim() || "Pendiente por definir.",
+      metodologia:
+        metodologiaPartes.join("\n\n") || "Pendiente por definir.",
+      resultados: form.resultados.trim() || "Pendiente por definir.",
+      conclusiones: form.conclusion.trim() || "Pendiente por definir.",
+      referencias: form.refs.trim() || "Pendiente por definir.",
+    };
+
+    try {
+      const { data } = await axios.post(
+        `${API_BASE_URL}/api/research/generate`,
+        payload
+      );
+
+      const link = data?.file_path
+        ? `${API_BASE_URL}${data.file_path}`
+        : "";
+
+      if (link) {
+        setPdfUrl(link);
+      }
+
+      setApiMessage(data?.message || "PDF generado exitosamente.");
+      setActiveStep("herramientas");
+      const herramientasSection = sectionRefs.current["herramientas"];
+      if (herramientasSection) {
+        herramientasSection.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    } catch (error) {
+      const message =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "No fue posible generar el PDF.";
+      setApiError(message);
+    } finally {
+      setLoadingPdf(false);
+    }
+  };
 
   // Progreso simple basado en 6 campos clave
   const completedChunks = [
@@ -264,7 +347,10 @@ const ResearchGuide = () => {
           ))}
 
           <button
-            className="rg-toc-link rg-toc-link--secondary"
+            className={
+              "rg-toc-link rg-toc-link--secondary" +
+              (activeStep === "herramientas" ? " rg-toc-link--active" : "")
+            }
             onClick={() => handleStepClick("herramientas")}
           >
             Recursos
@@ -280,11 +366,58 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["acerca"] = el)}
           >
             <h2>
-              Aprende investigación <span className="rg-badge">Modo guía</span>
+              Plataforma Web Interactiva para la Enseñanza y Construcción de
+              Proyectos de Investigación {" "}
+              <span className="rg-badge">Proyecto académico</span>
             </h2>
-            <p className="rg-hint">
-              Avanza paso a paso con apoyo de plantillas, ejemplos y ejercicios.
+            <p className="rg-description">
+              Esta plataforma nace para responder a las dificultades que
+              estudiantes y docentes encuentran al formular y estructurar un
+              proyecto de investigación. Reúne en un solo lugar recursos
+              pedagógicos, orientación práctica y herramientas digitales para
+              avanzar sin perder de vista la metodología.
             </p>
+            <p className="rg-description">
+              Al combinar teoría y práctica, el usuario aprende cada etapa del
+              proceso mientras construye su propio documento final: identifica
+              el problema, define objetivos, documenta el marco teórico y
+              selecciona la metodología adecuada con apoyo constante.
+            </p>
+            <div className="rg-row">
+              <div>
+                <h3 className="rg-subtitle">Componentes clave</h3>
+                <ul className="rg-list">
+                  <li>
+                    Backend en Python que estructura los aportes y genera un
+                    PDF listo para revisión.
+                  </li>
+                  <li>
+                    API construida con FastAPI que enlaza la interfaz con el
+                    motor de generación de documentos.
+                  </li>
+                  <li>
+                    Frontend interactivo que guía con plantillas, ejemplos y
+                    recordatorios paso a paso.
+                  </li>
+                  <li>
+                    Despliegue en Render y Netlify para garantizar acceso
+                    confiable desde cualquier dispositivo.
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="rg-subtitle">Equipo y contexto</h3>
+                <ul className="rg-team">
+                  <li>Andrés Vélez</li>
+                  <li>Felipe Solís</li>
+                  <li>Samuel Riaño</li>
+                </ul>
+                <p className="rg-description">
+                  Universidad Católica de Oriente · Facultad de Ingeniería · 4
+                  de septiembre de 2025
+                </p>
+              </div>
+            </div>
           </article>
 
           {/* === PASO 1 === */}
@@ -294,6 +427,12 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["paso1"] = el)}
           >
             <h2>1) Planteamiento del problema</h2>
+            <p className="rg-description">
+              Describe con claridad qué situación genera la necesidad de tu
+              investigación, a quién afecta, en qué contexto ocurre y por qué es
+              relevante abordarla. Cuanto más preciso sea el planteamiento,
+              más fácil será definir objetivos y diseñar soluciones viables.
+            </p>
             <label>Describe tu problema</label>
             <textarea
               value={form.problema}
@@ -309,6 +448,12 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["paso2"] = el)}
           >
             <h2>2) Objetivos</h2>
+            <p className="rg-description">
+              Formula un objetivo general que capture la finalidad central del
+              estudio y especifica metas particulares que permitan alcanzarlo.
+              Procura que cada objetivo específico sea medible y alineado con
+              el problema planteado.
+            </p>
             <label>Objetivo general</label>
             <input
               value={form.objGeneral}
@@ -330,6 +475,11 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["paso3"] = el)}
           >
             <h2>3) Marco teórico</h2>
+            <p className="rg-description">
+              Integra conceptos, teorías, antecedentes y referencias que
+              respalden tu estudio. Usa esta sección para construir la base
+              conceptual que orientará la interpretación de los datos.
+            </p>
             <textarea
               value={form.marco}
               onChange={handleChange("marco")}
@@ -344,6 +494,13 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["paso4"] = el)}
           >
             <h2>4) Metodología</h2>
+            <p className="rg-description">
+              Define cómo abordarás la investigación: especifica el enfoque,
+              el diseño elegido, el tipo de muestra y los instrumentos que
+              utilizarás para recolectar información. La coherencia entre estas
+              decisiones garantizará que los resultados respondan a tus
+              objetivos.
+            </p>
 
             <label>Enfoque</label>
             <select
@@ -381,6 +538,12 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["paso5"] = el)}
           >
             <h2>5) Recolección de datos</h2>
+            <p className="rg-description">
+              Asegura las condiciones logísticas y éticas necesarias antes de
+              salir a campo. Utiliza la lista de verificación para confirmar que
+              cuentas con consentimiento informado, cronograma, protocolos de
+              calidad y mecanismos de resguardo de la información.
+            </p>
 
             <ul className="rg-checklist">
               <li>
@@ -436,8 +599,11 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["paso6"] = el)}
           >
             <h2>6) Análisis de datos</h2>
-            <p className="rg-hint">
-              Selecciona técnicas según el enfoque.
+            <p className="rg-description">
+              Define los procedimientos analíticos que utilizarás para dar
+              respuesta a cada objetivo. Selecciona técnicas acordes al enfoque
+              (cuantitativo, cualitativo o mixto) y deja explícito cómo
+              interpretarás los hallazgos.
             </p>
             <details>
               <summary>Ejemplos</summary>
@@ -455,6 +621,11 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["paso7"] = el)}
           >
             <h2>7) Resultados</h2>
+            <p className="rg-description">
+              Resume los hallazgos más relevantes y explica cómo se relacionan
+              con las preguntas y objetivos. Puedes apoyarte en tablas, figuras
+              o descripciones narrativas según el tipo de estudio.
+            </p>
             <textarea
               value={form.resultados}
               onChange={handleChange("resultados")}
@@ -469,6 +640,11 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["paso8"] = el)}
           >
             <h2>8) Conclusiones</h2>
+            <p className="rg-description">
+              Integra lo aprendido durante el proceso, responde a la pregunta
+              de investigación y plantea recomendaciones o líneas futuras. Usa
+              el generador automático como base y ajusta la redacción final.
+            </p>
             <button className="rg-btn primary" onClick={generarConclusion}>
               ⚡ Generar conclusión
             </button>
@@ -487,6 +663,12 @@ const ResearchGuide = () => {
             ref={(el) => (sectionRefs.current["paso9"] = el)}
           >
             <h2>9) Referencias</h2>
+            <p className="rg-description">
+              Registra todas las fuentes consultadas siguiendo una norma
+              reconocida (APA, IEEE, Vancouver, entre otras). Mantener la
+              bibliografía actualizada evita el plagio y facilita futuras
+              revisiones.
+            </p>
 
             <textarea
               value={form.refs}
@@ -501,19 +683,68 @@ const ResearchGuide = () => {
             className="rg-card"
             ref={(el) => (sectionRefs.current["herramientas"] = el)}
           >
-            <h2>Herramientas</h2>
-
-            <button className="rg-btn" onClick={cargarEjemplo}>
-              💡 Cargar ejemplo
-            </button>
-
-            <button
-              className="rg-btn"
-              style={{ marginLeft: 10 }}
-              onClick={limpiarTodo}
-            >
-              🧹 Limpiar
-            </button>
+            <h2>Herramientas y recursos de apoyo</h2>
+            <p className="rg-description">
+              Siguiendo el proceso de investigación descrito por QuestionPro,
+              priorizamos recursos que fortalecen cada fase: planificación,
+              recolección, análisis y difusión de resultados.
+            </p>
+            <ul className="rg-tools">
+              <li>
+                <strong>Planeación:</strong> tableros de proyecto y mapas de
+                ruta para organizar etapas, entregables y responsables.
+              </li>
+              <li>
+                <strong>Recolección de datos:</strong> formularios digitales,
+                encuestas en QuestionPro o Google Forms y guías para entrevistas
+                semiestructuradas.
+              </li>
+              <li>
+                <strong>Análisis:</strong> hojas de cálculo colaborativas,
+                software estadístico y herramientas de codificación cualitativa
+                para transformar la información en hallazgos.
+              </li>
+              <li>
+                <strong>Comunicación:</strong> plantillas de informes y
+                presentaciones que facilitan compartir conclusiones con la
+                comunidad académica.
+              </li>
+            </ul>
+            <p className="rg-description">
+              Utiliza las siguientes acciones rápidas para trabajar con tu
+              proyecto y generar el documento final desde el backend.
+            </p>
+            <div className="rg-actions">
+              <button className="rg-btn" onClick={cargarEjemplo}>
+                💡 Cargar ejemplo
+              </button>
+              <button className="rg-btn" onClick={limpiarTodo}>
+                🧹 Limpiar
+              </button>
+              <button
+                className="rg-btn primary"
+                onClick={handleGeneratePdf}
+                disabled={loadingPdf}
+              >
+                {loadingPdf ? "Generando PDF..." : "Generar PDF"}
+              </button>
+              {pdfUrl && (
+                <a
+                  className="rg-btn"
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  ⬇️ Descargar PDF
+                </a>
+              )}
+            </div>
+            {apiMessage && (
+              <p className="rg-status rg-status--ok">{apiMessage}</p>
+            )}
+            {apiError && (
+              <p className="rg-status rg-status--error">{apiError}</p>
+            )}
           </article>
 
           <p className="rg-footer">
