@@ -400,7 +400,7 @@ const ResearchGuide = () => {
                   <li>Samuel Riaño</li>
                 </ul>
                 <p className="text-sm text-gray-400">
-                  Universidad Católica de Oriente · Facultad de Ingeniería · 4 de septiembre de 2025
+                  Universidad Católica de Oriente · Facultad de Ingeniería · 20 de noviembre del 2025
                 </p>
               </div>
             </div>
@@ -746,7 +746,8 @@ const ResearchGuide = () => {
                 <Lightbulb className="w-6 h-6 text-cyan-400" /> Herramientas y recursos de apoyo
               </h2>
               <p className="text-sm text-gray-400">
-                Siguiendo el proceso de investigación descrito por QuestionPro, priorizamos recursos que fortalecen cada fase: planificación, recolección, análisis y difusión de resultados.
+                Siguiendo el proceso de investigación descrito por QuestionPro <strong className="text-gray-200">https://www.questionpro.com/blog/es/proceso-de-investigacion/</strong>, priorizamos recursos que fortalecen cada fase: planificación, recolección, análisis y difusión de resultados.
+                Parte de la investigación es optenida desde las clases vistas en la materia investigación cientifica 1 de la universidad catolica del oriente dictada por la maestra <strong className="text-gray-200">Adriana Perez Cadavid.:</strong>
               </p>
               <ul className="text-sm text-gray-400 space-y-2 list-disc list-inside">
                 <li>
