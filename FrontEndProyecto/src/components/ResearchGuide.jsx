@@ -39,7 +39,7 @@ const defaultState = {
 
 const STORAGE_KEY = "research-guide-v1";
 const API_BASE_URL = (
-  import.meta.env.VITE_API_URL || "http://localhost:8000"
+  import.meta.env.VITE_API_URL || "https://proyectoinvestigacionapi.onrender.com"
 ).replace(/\/$/, "");
 
 const steps = [
